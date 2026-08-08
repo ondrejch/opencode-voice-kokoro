@@ -1,0 +1,12 @@
+{
+  "name": "opencode-voice-kokoro-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --import tsx 'tests/ts/*.ts'"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "@types/node": "^22.0.0"
+  }
+}

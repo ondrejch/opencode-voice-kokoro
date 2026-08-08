@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenCode Voice STT/PTT
+After=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/.local/share/opencode-voice
+ExecStart=%h/.local/share/opencode-voice/.venv/bin/python %h/.local/share/opencode-voice/voice.py
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=default.target

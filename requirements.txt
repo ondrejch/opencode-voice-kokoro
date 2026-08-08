@@ -1,0 +1,7 @@
+faster-whisper
+kokoro
+sounddevice
+soundfile
+numpy
+evdev
+torch
