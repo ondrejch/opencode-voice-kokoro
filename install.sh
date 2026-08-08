@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install script for OpenCode Voice (Kokoro)
-# Usage: ./install.sh [--skip-system] [--skip-venv] [--skip-plugin] [--skip-services]
+# Usage: ./install.sh [--skip-system] [--skip-venv] [--skip-plugin] [--skip-grok-hook] [--skip-services]
 set -euo pipefail
 
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/share/opencode-voice}"
@@ -19,23 +19,26 @@ err()   { echo -e "${RED}[-]${NC} $*" >&2; }
 SKIP_SYSTEM=0
 SKIP_VENV=0
 SKIP_PLUGIN=0
+SKIP_GROK_HOOK=0
 SKIP_SERVICES=0
 
 for arg in "$@"; do
   case "$arg" in
-    --skip-system)   SKIP_SYSTEM=1 ;;
-    --skip-venv)     SKIP_VENV=1 ;;
-    --skip-plugin)   SKIP_PLUGIN=1 ;;
-    --skip-services) SKIP_SERVICES=1 ;;
+    --skip-system)    SKIP_SYSTEM=1 ;;
+    --skip-venv)      SKIP_VENV=1 ;;
+    --skip-plugin)    SKIP_PLUGIN=1 ;;
+    --skip-grok-hook) SKIP_GROK_HOOK=1 ;;
+    --skip-services)  SKIP_SERVICES=1 ;;
     --help|-h)
       echo "Usage: $0 [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  --skip-system   Skip system package installation (requires sudo)"
-      echo "  --skip-venv     Skip Python venv creation (use existing)"
-      echo "  --skip-plugin   Skip OpenCode plugin installation"
-      echo "  --skip-services Skip systemd service installation"
-      echo "  --help          Show this help"
+      echo "  --skip-system    Skip system package installation (requires sudo)"
+      echo "  --skip-venv      Skip Python venv creation (use existing)"
+      echo "  --skip-plugin    Skip OpenCode plugin installation"
+      echo "  --skip-grok-hook Skip Grok Build Stop-hook installation"
+      echo "  --skip-services  Skip systemd service installation"
+      echo "  --help           Show this help"
       exit 0
       ;;
     *) err "Unknown option: $arg"; exit 1 ;;
@@ -75,11 +78,13 @@ info "Setting up install directory: $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
 
 # Copy scripts
-for script in voice.py tts_server.py speak.sh find_ptt_key.py; do
+for script in voice.py tts_server.py speak.sh find_ptt_key.py \
+              clean_for_speech.py grok_stop_speak.py; do
   cp "$REPO_DIR/scripts/$script" "$INSTALL_DIR/"
   info "Copied scripts/$script"
 done
-chmod +x "$INSTALL_DIR/speak.sh" "$INSTALL_DIR/find_ptt_key.py"
+chmod +x "$INSTALL_DIR/speak.sh" "$INSTALL_DIR/find_ptt_key.py" \
+  "$INSTALL_DIR/grok_stop_speak.py"
 
 if [[ "$SKIP_VENV" -eq 0 ]]; then
   info "Creating Python venv..."
@@ -104,6 +109,21 @@ if [[ "$SKIP_PLUGIN" -eq 0 ]]; then
   info "OpenCode plugin installed to $PLUGIN_DIR/voice.ts"
 else
   info "Skipping plugin (--skip-plugin)"
+fi
+
+# ---------------------------------------------------------------
+# 3b. Grok Build Stop hook (TTS on turn end)
+# ---------------------------------------------------------------
+if [[ "$SKIP_GROK_HOOK" -eq 0 ]]; then
+  GROK_HOOKS_DIR="$HOME/.grok/hooks"
+  mkdir -p "$GROK_HOOKS_DIR"
+  # Rewrite placeholder command to the installed absolute path.
+  sed "s|__GROK_STOP_SPEAK__|$INSTALL_DIR/grok_stop_speak.py|g" \
+    "$REPO_DIR/hooks/grok-voice.json" > "$GROK_HOOKS_DIR/grok-voice.json"
+  info "Grok Build hook installed to $GROK_HOOKS_DIR/grok-voice.json"
+  info "Restart grok or reload hooks (/hooks → r) for it to take effect."
+else
+  info "Skipping Grok hook (--skip-grok-hook)"
 fi
 
 # ---------------------------------------------------------------
@@ -137,10 +157,13 @@ echo ""
 echo "  3. Test TTS:"
 echo "     echo 'Hello world' | $INSTALL_DIR/speak.sh"
 echo ""
-echo "  4. Toggle voice output:"
+echo "  4. Toggle voice output (OpenCode + Grok Build TTS):"
 echo "     touch /tmp/opencode-voice-enabled   # enable"
 echo "     rm -f /tmp/opencode-voice-enabled   # disable"
 echo ""
 echo "  5. Check service status:"
 echo "     systemctl --user status opencode-voice opencode-tts"
+echo ""
+echo "  6. Grok Build: restart grok (or /hooks → r) so the Stop hook loads."
+echo "     Built-in Grok STT (Ctrl+Space / F8) is separate from this stack."
 echo ""

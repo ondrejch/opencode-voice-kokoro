@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "__GROK_STOP_SPEAK__",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,11 +1,13 @@
 # OpenCode Voice (Kokoro)
 
-Push-to-talk voice control for [OpenCode](https://opencode.ai) on Linux.
-Speak prompts into your terminal, hear OpenCode's replies aloud.
+Push-to-talk voice control for [OpenCode](https://opencode.ai) and
+[Grok Build](https://x.ai/cli) on Linux. Speak prompts into your terminal,
+hear agent replies aloud via Kokoro TTS.
 
 ```
-microphone → faster-whisper (GPU) → OpenCode prompt
-OpenCode reply → Kokoro TTS (GPU) → speakers
+microphone → faster-whisper (GPU) → focused terminal (OpenCode / Grok)
+OpenCode reply  → plugin (session.idle) → Kokoro TTS
+Grok Build reply → Stop hook             → Kokoro TTS
 ```
 
 **Features**
@@ -15,12 +17,17 @@ OpenCode reply → Kokoro TTS (GPU) → speakers
 - Markdown-aware text cleaning before TTS
 - Persistent Kokoro daemon to avoid per-reply model startup
 - Runs as systemd user services, starts at login
+- Grok Build TTS via a global Stop hook (`~/.grok/hooks/`)
+
+Grok Build also has its own cloud voice dictation (Ctrl+Space / F8,
+SuperGrok). This project does not replace that; it adds **local** STT
+(optional) and **Kokoro TTS** for Grok replies.
 
 ## Requirements
 
 - Linux (Ubuntu 24.04 tested)
 - NVIDIA GPU with CUDA drivers (for Whisper + Kokoro on GPU)
-- OpenCode installed
+- OpenCode and/or Grok Build installed
 - Python 3.12+
 - `ffmpeg`, `portaudio19-dev`
 - `wtype` (Wayland) or `xdotool` (X11) for text injection
@@ -38,9 +45,9 @@ cd opencode-voice-kokoro
 ```
 
 This installs system packages, creates a Python venv, copies scripts,
-installs the OpenCode plugin, and enables systemd services. Pass
-`--skip-system`, `--skip-venv`, `--skip-plugin`, or `--skip-services`
-to skip individual steps.
+installs the OpenCode plugin and Grok Build Stop hook, and enables
+systemd services. Pass `--skip-system`, `--skip-venv`, `--skip-plugin`,
+`--skip-grok-hook`, or `--skip-services` to skip individual steps.
 
 ### Post-install: configure your PTT key
 
@@ -200,20 +207,28 @@ keycode and cannot be used with this evdev-based approach.
 ## Architecture
 
 ```
-voice.py          Push-to-talk daemon. Records audio on key-hold,
-                  transcribes with Whisper on key-release, injects
-                  text via wtype/xdotool. Signals tts_server.py on
-                  key-press to stop current speech for barge-in.
+voice.py            Push-to-talk daemon. Records audio on key-hold,
+                    transcribes with Whisper on key-release, injects
+                    text via wtype/xdotool. Signals tts_server.py on
+                    key-press to stop current speech for barge-in.
 
-tts_server.py     Persistent Kokoro TTS server. Keeps the model
-                  loaded on CUDA, listens on Unix socket
-                  /tmp/opencode-tts.sock for text, plays audio.
+tts_server.py       Persistent Kokoro TTS server. Keeps the model
+                    loaded on CUDA, listens on Unix socket
+                    /tmp/opencode-tts.sock for text, plays audio.
 
-speak.sh          Thin wrapper: sends stdin to tts_server.py via socat.
+speak.sh            Thin wrapper: sends stdin to tts_server.py via socat.
 
-voice.ts          OpenCode plugin. Listens for assistant messages,
-                  cleans Markdown, sends text to speak.sh on
-                  session.idle. Toggle via /tmp/opencode-voice-enabled.
+clean_for_speech.py Markdown cleaner shared by the Grok Stop hook
+                    (mirrors cleanForSpeech in voice.ts).
+
+voice.ts            OpenCode plugin. Listens for assistant messages,
+                    cleans Markdown, sends text to speak.sh on
+                    session.idle. Toggle via /tmp/opencode-voice-enabled.
+
+grok_stop_speak.py  Grok Build Stop hook. On end_turn, cleans
+                    lastAssistantMessage and speaks via speak.sh
+                    when the voice flag is set. Installed to
+                    ~/.grok/hooks/grok-voice.json.
 ```
 
 ## TTS configuration
@@ -231,10 +246,24 @@ Available Kokoro voices: `af_heart`, `af_sarah`, `am_michael`,
 
 ## Voice cleaning
 
-The OpenCode plugin strips Markdown formatting before sending text to
-TTS: code blocks, backticks, bold/italic markers, URLs, paths,
-headings, lists, and blockquotes. The goal is natural-sounding speech
-from technical agent output.
+The OpenCode plugin and Grok Stop hook strip Markdown formatting before
+sending text to TTS: code blocks, backticks, bold/italic markers, URLs,
+paths, headings, lists, and blockquotes. The goal is natural-sounding
+speech from technical agent output.
+
+## Grok Build TTS
+
+After install, the Stop hook lives at `~/.grok/hooks/grok-voice.json`
+and points at `~/.local/share/opencode-voice/grok_stop_speak.py`.
+Restart Grok (or open `/hooks` and press `r`) so it loads.
+
+Enable spoken replies with the same flag as OpenCode:
+
+```bash
+touch /tmp/opencode-voice-enabled
+```
+
+Skip installing the hook with `./install.sh --skip-grok-hook`.
 
 ## Troubleshooting
 
