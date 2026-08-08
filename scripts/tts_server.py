@@ -41,6 +41,23 @@ voice = None
 
 
 def cleanup():
+    """Clean up socket and PID file, but only if they belong to this process.
+
+    The PID file guards against atexit running in a different process
+    (e.g. a test harness) and deleting the real server's socket.
+    """
+    try:
+        with open(PID_FILE, encoding="utf-8") as f:
+            owner_pid = int(f.read().strip())
+    except (FileNotFoundError, ValueError):
+        # No PID file — nothing to clean up.
+        return
+
+    if owner_pid != os.getpid():
+        # This PID file belongs to another process (e.g. the real
+        # server while we're a test).  Don't touch its socket.
+        return
+
     try:
         os.unlink(SOCKET)
     except FileNotFoundError:
@@ -55,9 +72,12 @@ def cleanup():
 def request_stop(*_):
     stop_requested.set()
 
+
+def stop_playback():
+    """Wait for stop signal, then abort current audio playback."""
+    stop_requested.wait()
     if playback_stream is not None:
         try:
-            playback_stream.stop()
             playback_stream.abort()
         except Exception:
             pass
@@ -84,7 +104,10 @@ def speak(text: str):
         global playback_stream
         playback_stream = sd.play(samples, 24000)
         if playback_stream is not None:
+            stop_thread = threading.Thread(target=stop_playback, daemon=True)
+            stop_thread.start()
             playback_stream.wait()
+            stop_thread.join(timeout=0.1)
 
         if stop_requested.is_set():
             break
