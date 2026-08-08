@@ -76,13 +76,13 @@ export const VoicePlugin: Plugin = async ({
   $
 }) => {
 
-  let accumulated = ""
+  const partTexts = new Map<number, string>()
 
   return {
 
     event: async ({ event }) => {
 
-      // Accumulate the full assistant text as it streams.
+      // Accumulate text per part index as it streams.
       if (event.type === "message.part.updated") {
 
         const part = (event as any).properties?.part
@@ -91,15 +91,17 @@ export const VoicePlugin: Plugin = async ({
           part?.type === "text" &&
           typeof part.text === "string"
         ) {
-          accumulated = part.text
+          partTexts.set(part.index, part.text)
         }
       }
 
-      // When OpenCode finishes a turn, speak the cleaned text.
+      // When OpenCode finishes a turn, speak all text parts.
       if (event.type === "session.idle") {
 
+        const accumulated = Array.from(partTexts.values()).join(" ")
+        partTexts.clear()
+
         const text = cleanForSpeech(accumulated)
-        accumulated = ""
 
         // Voice output disabled
         if (!existsSync(VOICE_FLAG))
