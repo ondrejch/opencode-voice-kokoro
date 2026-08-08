@@ -83,7 +83,8 @@ def speak(text: str):
 
         global playback_stream
         playback_stream = sd.play(samples, 24000)
-        playback_stream.wait()
+        if playback_stream is not None:
+            playback_stream.wait()
 
         if stop_requested.is_set():
             break
