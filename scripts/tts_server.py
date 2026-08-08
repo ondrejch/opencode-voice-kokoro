@@ -31,7 +31,6 @@ PID_FILE = "/tmp/opencode-tts.pid"
 VOICE = "af_heart"
 SPEED = 1.1
 stop_requested = threading.Event()
-playback_stream = None
 
 # Module-level defaults — overwritten when the server actually starts.
 # Kept as None so speak() can be imported and tested without a GPU.
@@ -71,16 +70,10 @@ def cleanup():
 
 def request_stop(*_):
     stop_requested.set()
-
-
-def stop_playback():
-    """Wait for stop signal, then abort current audio playback."""
-    stop_requested.wait()
-    if playback_stream is not None:
-        try:
-            playback_stream.abort()
-        except Exception:
-            pass
+    try:
+        sd.stop()
+    except Exception:
+        pass
 
 
 def speak(text: str):
@@ -101,13 +94,8 @@ def speak(text: str):
 
         samples = audio.cpu().numpy()
 
-        global playback_stream
-        playback_stream = sd.play(samples, 24000)
-        if playback_stream is not None:
-            stop_thread = threading.Thread(target=stop_playback, daemon=True)
-            stop_thread.start()
-            playback_stream.wait()
-            stop_thread.join(timeout=0.1)
+        sd.play(samples, 24000)
+        sd.wait()
 
         if stop_requested.is_set():
             break

@@ -32,11 +32,11 @@ def tts_module(mock_gpu_modules):
 class TestCleanup:
 
     def test_removes_socket_and_pid(self, tts_module, tmp_path):
-        """cleanup should remove socket and PID files if they exist."""
+        """cleanup should remove socket and PID files if they belong to this process."""
         socket_path = tmp_path / "tts.sock"
         pid_path = tmp_path / "tts.pid"
         socket_path.touch()
-        pid_path.touch()
+        pid_path.write_text(str(os.getpid()))
 
         with patch.object(tts_module, "SOCKET", str(socket_path)):
             with patch.object(tts_module, "PID_FILE", str(pid_path)):
@@ -44,6 +44,19 @@ class TestCleanup:
 
                 assert not socket_path.exists()
                 assert not pid_path.exists()
+
+    def test_does_not_remove_foreign_socket(self, tts_module, tmp_path):
+        """cleanup should not remove a socket owned by another process."""
+        socket_path = tmp_path / "tts.sock"
+        pid_path = tmp_path / "tts.pid"
+        socket_path.touch()
+        pid_path.write_text("99999")  # foreign PID
+
+        with patch.object(tts_module, "SOCKET", str(socket_path)):
+            with patch.object(tts_module, "PID_FILE", str(pid_path)):
+                tts_module.cleanup()
+
+                assert socket_path.exists()  # should not be removed
 
     def test_no_files_no_error(self, tts_module, tmp_path):
         """cleanup should not error if files don't exist."""
@@ -68,27 +81,15 @@ class TestRequestStop:
 
         assert tts_module.stop_requested.is_set()
 
-    def test_stop_calls_playback_stream_methods(self, tts_module):
-        """request_stop should call stop() and abort() on the playback stream."""
-        mock_stream = MagicMock()
-        tts_module.playback_stream = mock_stream
-
+    def test_stop_calls_sd_stop(self, tts_module):
+        """request_stop should call sd.stop() to halt playback."""
         tts_module.request_stop()
 
-        mock_stream.stop.assert_called()
-        mock_stream.abort.assert_called()
+        tts_module.sd.stop.assert_called()
 
-    def test_stop_skips_when_no_stream(self, tts_module):
-        """request_stop should do nothing if playback_stream is None."""
-        tts_module.playback_stream = None
-
-        tts_module.request_stop()  # should not raise
-
-    def test_stop_catches_stream_errors(self, tts_module):
-        """request_stop should not raise even if stream methods fail."""
-        mock_stream = MagicMock()
-        mock_stream.stop.side_effect = RuntimeError("device gone")
-        tts_module.playback_stream = mock_stream
+    def test_stop_catches_sd_errors(self, tts_module):
+        """request_stop should not raise even if sd.stop() fails."""
+        tts_module.sd.stop.side_effect = RuntimeError("device gone")
 
         tts_module.request_stop()  # should not raise
 
