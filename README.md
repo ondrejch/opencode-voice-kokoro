@@ -29,14 +29,62 @@ OpenCode reply → Kokoro TTS (GPU) → speakers
 
 ## Installation
 
-### 1. System packages
+### Quick install (recommended)
+
+```bash
+git clone https://github.com/<your-user>/opencode-voice-kokoro.git
+cd opencode-voice-kokoro
+./install.sh
+```
+
+This installs system packages, creates a Python venv, copies scripts,
+installs the OpenCode plugin, and enables systemd services. Pass
+`--skip-system`, `--skip-venv`, `--skip-plugin`, or `--skip-services`
+to skip individual steps.
+
+### Post-install: configure your PTT key
+
+Edit `~/.local/share/opencode-voice/voice.py` and set `PTT_PATH`
+and `PTT_KEY` to match your keyboard. Use the included utility:
+
+```bash
+~/.local/share/opencode-voice/.venv/bin/python \
+    ~/.local/share/opencode-voice/find_ptt_key.py
+```
+
+The repo keeps two example pairs from the author's keyboard;
+only the lower pair is active. Replace them with your own values.
+See **Finding your key** below for details.
+
+### Enable voice output
+
+Voice output is **off** by default. Enable with:
+
+```bash
+touch /tmp/opencode-voice-enabled
+```
+
+Optional: add aliases to `~/.bashrc`:
+
+```bash
+alias voice-on='touch /tmp/opencode-voice-enabled'
+alias voice-off='rm -f /tmp/opencode-voice-enabled'
+alias voice-status='test -f /tmp/opencode-voice-enabled && echo ON || echo OFF'
+```
+
+### Manual installation
+
+<details>
+<summary>Click to expand manual steps</summary>
+
+#### 1. System packages
 
 ```bash
 sudo apt install ffmpeg pipewire-audio portaudio19-dev \
     python3.12-venv wtype xdotool socat espeak-ng
 ```
 
-### 2. Clone and set up Python environment
+#### 2. Clone and set up Python environment
 
 ```bash
 git clone https://github.com/<your-user>/opencode-voice-kokoro.git
@@ -54,34 +102,14 @@ source "$INSTALL_DIR/.venv/bin/activate"
 pip install -r requirements.txt
 ```
 
-### 3. Configure push-to-talk key
-
-Edit `~/.local/share/opencode-voice/voice.py` and change `PTT_PATH`
-and `PTT_KEY` to match your keyboard. The repo keeps two example pairs
-from the author's keyboard; only the lower pair is active, so update
-both examples or leave the pair you want active at the bottom. See
-**Finding your key** below.
-
-### 4. Install the OpenCode plugin
+#### 3. Install the OpenCode plugin
 
 ```bash
 mkdir -p ~/.config/opencode/plugins
 cp plugin/voice.ts ~/.config/opencode/plugins/voice.ts
 ```
 
-If you installed scripts somewhere other than
-`~/.local/share/opencode-voice/`, update the `TTS` path in `voice.ts`.
-
-### 5. Install scripts
-
-```bash
-# Already copied in step 2.
-ls ~/.local/share/opencode-voice/
-```
-
-### 6. Keyboard access
-
-You need read access to `/dev/input/event*`:
+#### 4. Keyboard access
 
 ```bash
 sudo usermod -aG input "$USER"
@@ -89,17 +117,15 @@ sudo usermod -aG input "$USER"
 
 Then **log out and back in**.
 
-### 7. Enable voice toggle aliases (optional)
-
-Add to `~/.bashrc`:
+#### 5. Enable systemd services
 
 ```bash
-alias voice-on='touch /tmp/opencode-voice-enabled'
-alias voice-off='rm -f /tmp/opencode-voice-enabled'
-alias voice-status='test -f /tmp/opencode-voice-enabled && echo ON || echo OFF'
+cp systemd/*.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now opencode-voice.service opencode-tts.service
 ```
 
-Voice output is **off** by default. Run `voice-on` to enable.
+</details>
 
 ## Running
 
