@@ -8,7 +8,7 @@
       <a href="https://x.ai/cli">Grok Build</a> on Linux. Speak prompts
       into your terminal, hear agent replies aloud via Kokoro TTS.</p>
     </td>
-    <td width="30%" valign="middle" align="right">
+    <td width="38%" valign="middle" align="right">
       <img src=".img/a1.png" width="220" alt="A silly picture">
     </td>
   </tr>
