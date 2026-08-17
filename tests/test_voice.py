@@ -23,6 +23,45 @@ def voice_module(mock_gpu_modules):
     return mod
 
 
+# --- device backend ---
+
+class TestSttDevice:
+
+    def test_default_device_is_cuda_or_cpu(self, voice_module):
+        """STT_DEVICE must be one of the supported backends."""
+        assert voice_module.STT_DEVICE in ("cuda", "cpu")
+        if voice_module.STT_DEVICE == "cuda":
+            assert voice_module.STT_COMPUTE_TYPE == "float16"
+        else:
+            assert voice_module.STT_COMPUTE_TYPE == "int8"
+
+    def test_cpu_env_sets_int8(self, mock_gpu_modules, monkeypatch):
+        """OPENCODE_STT_DEVICE=cpu selects cpu + int8 compute."""
+        monkeypatch.setenv("OPENCODE_STT_DEVICE", "cpu")
+        script_path = os.path.join(
+            os.path.dirname(__file__), "..", "scripts", "voice.py"
+        )
+        spec = importlib.util.spec_from_file_location("voice_cpu", script_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert mod.STT_DEVICE == "cpu"
+        assert mod.STT_COMPUTE_TYPE == "int8"
+        mod.WhisperModel.assert_called()
+        _, kwargs = mod.WhisperModel.call_args
+        assert kwargs["device"] == "cpu"
+        assert kwargs["compute_type"] == "int8"
+
+    def test_invalid_device_exits(self, mock_gpu_modules, monkeypatch):
+        monkeypatch.setenv("OPENCODE_STT_DEVICE", "tpu")
+        script_path = os.path.join(
+            os.path.dirname(__file__), "..", "scripts", "voice.py"
+        )
+        spec = importlib.util.spec_from_file_location("voice_bad", script_path)
+        mod = importlib.util.module_from_spec(spec)
+        with pytest.raises(SystemExit):
+            spec.loader.exec_module(mod)
+
+
 # --- stop_tts ---
 
 class TestStopTts:

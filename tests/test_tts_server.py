@@ -27,6 +27,61 @@ def tts_module(mock_gpu_modules):
     return mod
 
 
+# --- device backend ---
+
+class TestTtsDevice:
+
+    def test_default_device_is_cuda_or_cpu(self, tts_module):
+        assert tts_module.TTS_DEVICE in ("cuda", "cpu")
+
+    def test_cpu_env(self, mock_gpu_modules, monkeypatch):
+        monkeypatch.setenv("OPENCODE_TTS_DEVICE", "cpu")
+        script_path = os.path.join(
+            os.path.dirname(__file__), "..", "scripts", "tts_server.py"
+        )
+        spec = importlib.util.spec_from_file_location("tts_cpu", script_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert mod.TTS_DEVICE == "cpu"
+
+    def test_invalid_device_exits(self, mock_gpu_modules, monkeypatch):
+        monkeypatch.setenv("OPENCODE_TTS_DEVICE", "metal")
+        script_path = os.path.join(
+            os.path.dirname(__file__), "..", "scripts", "tts_server.py"
+        )
+        spec = importlib.util.spec_from_file_location("tts_bad", script_path)
+        mod = importlib.util.module_from_spec(spec)
+        with pytest.raises(SystemExit):
+            spec.loader.exec_module(mod)
+
+    def test_run_server_places_model_on_configured_device(
+        self, tts_module, tmp_path
+    ):
+        """KModel().to(TTS_DEVICE) should use the configured backend."""
+        tts_module.TTS_DEVICE = "cpu"
+        pid_path = tmp_path / "tts.pid"
+        socket_path = tmp_path / "tts.sock"
+
+        mock_server = MagicMock()
+        mock_server.accept.side_effect = KeyboardInterrupt
+        mock_model_instance = MagicMock()
+        tts_module.KModel.return_value = mock_model_instance
+        mock_model_instance.to.return_value = mock_model_instance
+        mock_model_instance.eval.return_value = mock_model_instance
+
+        with patch.object(tts_module, "PID_FILE", str(pid_path)):
+            with patch.object(tts_module, "SOCKET", str(socket_path)):
+                with patch.object(
+                    tts_module.socket, "socket", return_value=mock_server
+                ):
+                    try:
+                        tts_module.run_server()
+                    except KeyboardInterrupt:
+                        pass
+
+        mock_model_instance.to.assert_called_with("cpu")
+
+
 # --- cleanup ---
 
 class TestCleanup:

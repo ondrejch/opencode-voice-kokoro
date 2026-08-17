@@ -2,9 +2,11 @@
 """
 Persistent Kokoro TTS daemon.
 
-Keeps the Kokoro model loaded on CUDA and listens on a Unix socket
-for text-to-speech requests.  This avoids the Python/PyTorch startup
+Keeps the Kokoro model loaded and listens on a Unix socket for
+text-to-speech requests.  This avoids the Python/PyTorch startup
 latency on every call, making TTS near-instantaneous.
+
+Backend: set TTS_DEVICE to "cuda" or "cpu" (or env OPENCODE_TTS_DEVICE).
 
 Usage:
     python tts_server.py
@@ -30,6 +32,15 @@ SOCKET = "/tmp/opencode-tts.sock"
 PID_FILE = "/tmp/opencode-tts.pid"
 VOICE = "af_heart"
 SPEED = 1.1
+
+# TTS backend: "cuda" (GPU, default) or "cpu".
+# Override without editing: export OPENCODE_TTS_DEVICE=cpu
+TTS_DEVICE = os.environ.get("OPENCODE_TTS_DEVICE", "cuda").strip().lower()
+if TTS_DEVICE not in ("cuda", "cpu"):
+    raise SystemExit(
+        f"Invalid TTS_DEVICE={TTS_DEVICE!r}; use 'cuda' or 'cpu'"
+    )
+
 stop_requested = threading.Event()
 
 # Module-level defaults — overwritten when the server actually starts.
@@ -111,9 +122,9 @@ def run_server():
     """
     global model, pipeline, voice
 
-    print("Loading Kokoro on CUDA...")
+    print(f"Loading Kokoro on {TTS_DEVICE}...")
 
-    model = KModel().to("cuda").eval()
+    model = KModel().to(TTS_DEVICE).eval()
 
     pipeline = KPipeline(
         lang_code="a",
@@ -122,7 +133,7 @@ def run_server():
 
     voice = pipeline.load_voice(VOICE)
 
-    print("Kokoro ready.")
+    print(f"Kokoro ready ({TTS_DEVICE}).")
 
     signal.signal(signal.SIGUSR1, request_stop)
     atexit.register(cleanup)

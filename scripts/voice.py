@@ -3,8 +3,10 @@
 Push-to-talk speech-to-text daemon for OpenCode.
 
 Holds a configurable key to record microphone, releases to transcribe
-with faster-whisper (large-v3 on CUDA), then injects the text into
-the focused terminal via wtype (Wayland) or xdotool (X11).
+with faster-whisper (large-v3), then injects the text into the focused
+terminal via wtype (Wayland) or xdotool (X11).
+
+Backend: set STT_DEVICE to "cuda" or "cpu" (or env OPENCODE_STT_DEVICE).
 
 Also kills any running Kokoro TTS process on key-press so you can
 barge-in and interrupt OpenCode's speech.
@@ -77,10 +79,21 @@ PTT_KEY = ecodes.KEY_HOMEPAGE
 MODEL_NAME = "large-v3"
 TTS_PID_FILE = "/tmp/opencode-tts.pid"
 
+# STT backend: "cuda" (GPU, default) or "cpu".
+# Override without editing: export OPENCODE_STT_DEVICE=cpu
+STT_DEVICE = os.environ.get("OPENCODE_STT_DEVICE", "cuda").strip().lower()
+if STT_DEVICE not in ("cuda", "cpu"):
+    raise SystemExit(
+        f"Invalid STT_DEVICE={STT_DEVICE!r}; use 'cuda' or 'cpu'"
+    )
+
+# float16 is for GPU; int8 is a good default on CPU for faster-whisper.
+STT_COMPUTE_TYPE = "float16" if STT_DEVICE == "cuda" else "int8"
+
 model = WhisperModel(
     MODEL_NAME,
-    device="cuda",
-    compute_type="float16",
+    device=STT_DEVICE,
+    compute_type=STT_COMPUTE_TYPE,
 )
 
 

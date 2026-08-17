@@ -231,12 +231,44 @@ grok_stop_speak.py  Grok Build Stop hook. On end_turn, cleans
                     ~/.grok/hooks/grok-voice.json.
 ```
 
+## Device backends (CPU / CUDA)
+
+STT and TTS each pick a backend independently. Default is **cuda** for both.
+
+| Component | Variable / env | Values | Script |
+|-----------|----------------|--------|--------|
+| STT (Whisper) | `STT_DEVICE` or `OPENCODE_STT_DEVICE` | `cuda`, `cpu` | `scripts/voice.py` |
+| TTS (Kokoro) | `TTS_DEVICE` or `OPENCODE_TTS_DEVICE` | `cuda`, `cpu` | `scripts/tts_server.py` |
+
+Edit the constant in the installed script, or set the env var (handy for systemd):
+
+```bash
+# temporary shell test
+OPENCODE_STT_DEVICE=cpu OPENCODE_TTS_DEVICE=cpu \
+  ~/.local/share/opencode-voice/.venv/bin/python \
+  ~/.local/share/opencode-voice/tts_server.py
+```
+
+In the user unit files, for example:
+
+```ini
+# opencode-tts.service
+Environment=OPENCODE_TTS_DEVICE=cpu
+
+# opencode-voice.service
+Environment=OPENCODE_STT_DEVICE=cpu
+```
+
+Then `systemctl --user daemon-reload` and restart the service.
+On CPU, Whisper uses `int8` compute; on CUDA it uses `float16`.
+
 ## TTS configuration
 
 In `scripts/tts_server.py`:
 
 | Variable | Default     | Description                  |
 |----------|-------------|------------------------------|
+| TTS_DEVICE | cuda      | `cuda` or `cpu` (or env `OPENCODE_TTS_DEVICE`) |
 | VOICE    | af_heart    | Kokoro voice (see below)     |
 | SPEED    | 1.1         | Speech speed multiplier      |
 | SOCKET   | /tmp/opencode-tts.sock | Unix socket path       |
