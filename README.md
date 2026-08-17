@@ -1,12 +1,18 @@
 # OpenCode Voice (Kokoro)
 
-Push-to-talk voice control for [OpenCode](https://opencode.ai) and
-[Grok Build](https://x.ai/cli) on Linux. Speak prompts into your terminal,
-hear agent replies aloud via Kokoro TTS.
-
-<p align="center">
-  <img src=".img/a1.png" width="40%" alt="A silly picture">
-</p>
+<table>
+  <tr>
+    <td valign="top">
+      <p><b>Push-to-talk voice control</b> for
+      <a href="https://opencode.ai">OpenCode</a> and
+      <a href="https://x.ai/cli">Grok Build</a> on Linux. Speak prompts
+      into your terminal, hear agent replies aloud via Kokoro TTS.</p>
+    </td>
+    <td width="30%" valign="middle" align="right">
+      <img src=".img/a1.png" width="220" alt="A silly picture">
+    </td>
+  </tr>
+</table>
 
 ```
 microphone → faster-whisper (GPU) → focused terminal (OpenCode / Grok)
