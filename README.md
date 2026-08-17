@@ -1,14 +1,14 @@
 # OpenCode Voice (Kokoro)
 
-<table style="border-collapse: collapse;">
+<table>
   <tr>
-    <td style="border: 0; padding: 0; vertical-align: top;">
+    <td valign="top">
       <p><b>Push-to-talk voice control</b> for
       <a href="https://opencode.ai">OpenCode</a> and
       <a href="https://x.ai/cli">Grok Build</a> on Linux. Speak prompts
       into your terminal, hear agent replies aloud via Kokoro TTS.</p>
     </td>
-    <td style="border: 0; padding: 0; width: 38%; vertical-align: middle; text-align: right;">
+    <td width="38%" valign="middle" align="right">
       <img src=".img/a1.png" width="220" alt="A silly picture">
     </td>
   </tr>
