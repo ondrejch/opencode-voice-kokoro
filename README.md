@@ -7,7 +7,7 @@
       <a href="https://opencode.ai">OpenCode</a> and
       <a href="https://x.ai/cli">Grok Build</a> on Linux. Speak prompts
       into your terminal, hear agent replies aloud via Kokoro TTS. 
-      Note that STT writes into whaever active input, so the STT is generic.</p>
+      Note that STT writes into whatever is the active input, so the STT is generic.</p>
     </td>
     <td width="38%" valign="middle" align="right">
       <img src=".img/a1.png" width="220" alt="A silly picture">
