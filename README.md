@@ -16,7 +16,7 @@
 </table>
 
 ```
-microphone → faster-whisper (GPU) → focused terminal (OpenCode / Grok)
+microphone → faster-whisper (GPU) → focused terminal or other input
 OpenCode reply  → plugin (session.idle) → Kokoro TTS
 Grok Build reply → Stop hook             → Kokoro TTS
 ```
