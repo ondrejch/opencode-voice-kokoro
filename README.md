@@ -1,5 +1,9 @@
 # OpenCode Voice (Kokoro)
 
+<p align="center">
+  <img src=".img/a1.png" width="40%" alt="A silly picture">
+</p>
+
 Push-to-talk voice control for [OpenCode](https://opencode.ai) and
 [Grok Build](https://x.ai/cli) on Linux. Speak prompts into your terminal,
 hear agent replies aloud via Kokoro TTS.
