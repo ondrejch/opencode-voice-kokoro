@@ -6,7 +6,8 @@
       <p><b>Push-to-talk voice control</b> for
       <a href="https://opencode.ai">OpenCode</a> and
       <a href="https://x.ai/cli">Grok Build</a> on Linux. Speak prompts
-      into your terminal, hear agent replies aloud via Kokoro TTS.</p>
+      into your terminal, hear agent replies aloud via Kokoro TTS. 
+      Actually it just writes into active input, so the STT is generic.</p>
     </td>
     <td width="38%" valign="middle" align="right">
       <img src=".img/a1.png" width="220" alt="A silly picture">
@@ -49,7 +50,7 @@ SuperGrok). This project does not replace that; it adds **local** STT
 ### Quick install (recommended)
 
 ```bash
-git clone https://github.com/<your-user>/opencode-voice-kokoro.git
+git clone https://github.com/ondrejch/opencode-voice-kokoro.git
 cd opencode-voice-kokoro
 ./install.sh
 ```
