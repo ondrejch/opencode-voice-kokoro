@@ -320,6 +320,14 @@ graphical session, not from a TTY or SSH. The `WAYLAND_DISPLAY` and
 **TTS service fails under systemd** — Add
 `Environment=XDG_RUNTIME_DIR=/run/user/%U` to the service file.
 
+**STT transcribes but nothing appears in the terminal** — The
+`opencode-voice` user service runs without the graphical session's
+environment (no `DISPLAY`/`XDG_SESSION_TYPE`), so `type_into_opencode`
+can't inject text via `xdotool`/`wtype`. Add `PAMName=login` to the
+`[Service]` section so the unit inherits the session environment
+(works for both X11 and Wayland). `After=graphical-session.target`
+only orders the start — it does not provide the env.
+
 **"No such file or directory: wtype"** — Install with
 `sudo apt install wtype` (Wayland) or `sudo apt install xdotool`
 (X11).

@@ -4,6 +4,10 @@ After=graphical-session.target
 
 [Service]
 Type=simple
+# Run as a login session so the graphical session's environment
+# (DISPLAY / XDG_SESSION_TYPE / WAYLAND_DISPLAY) is inherited —
+# required for type_into_opencode() to inject text via xdotool/wtype.
+PAMName=login
 WorkingDirectory=%h/.local/share/opencode-voice
 # Backend: cuda (default) or cpu
 # Environment=OPENCODE_STT_DEVICE=cpu
