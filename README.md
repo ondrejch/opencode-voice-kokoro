@@ -123,7 +123,8 @@ pip install -r requirements.txt
 #### 3. Install the OpenCode plugin
 
 ```bash
-mkdir -p ~/.config/opencode/plugins
+mkdir -p ~/.config/opencode/plugins/kokoro
+cp plugin/kokoro/clean.ts ~/.config/opencode/plugins/kokoro/clean.ts
 cp plugin/voice.ts ~/.config/opencode/plugins/voice.ts
 ```
 
@@ -230,7 +231,7 @@ tts_server.py       Persistent Kokoro TTS server. Keeps the model
 speak.sh            Thin wrapper: sends stdin to tts_server.py via socat.
 
 clean_for_speech.py Markdown cleaner shared by the Grok Stop hook
-                    (mirrors cleanForSpeech in voice.ts).
+                    (mirrors cleanForSpeech in plugin/kokoro/clean.ts).
 
 voice.ts            OpenCode plugin. Listens for assistant messages,
                     cleans Markdown, sends text to speak.sh on

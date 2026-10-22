@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { cleanForSpeech } from "../../plugin/voice.ts";
+import { cleanForSpeech } from "../../plugin/kokoro/clean.ts";
 
 describe("cleanForSpeech", () => {
 

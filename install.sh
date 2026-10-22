@@ -105,6 +105,10 @@ fi
 if [[ "$SKIP_PLUGIN" -eq 0 ]]; then
   PLUGIN_DIR="$HOME/.config/opencode/plugins"
   mkdir -p "$PLUGIN_DIR"
+  # Helpers live in a subdirectory: OpenCode loads every *.ts/*.js file in the
+  # plugins directory as a plugin, so a top-level helper would be invoked too.
+  mkdir -p "$PLUGIN_DIR/kokoro"
+  cp "$REPO_DIR/plugin/kokoro/clean.ts" "$PLUGIN_DIR/kokoro/clean.ts"
   cp "$REPO_DIR/plugin/voice.ts" "$PLUGIN_DIR/voice.ts"
   info "OpenCode plugin installed to $PLUGIN_DIR/voice.ts"
 else
