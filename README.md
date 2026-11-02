@@ -59,6 +59,8 @@ This installs system packages, creates a Python venv, copies scripts,
 installs the OpenCode plugin and Grok Build Stop hook, and enables
 systemd services. Pass `--skip-system`, `--skip-venv`, `--skip-plugin`,
 `--skip-grok-hook`, or `--skip-services` to skip individual steps.
+The plugin layout is auto-detected from `opencode --version`
+(`--v1` / `--v2` force the OpenCode V1 or V2 layout).
 
 ### Post-install: configure your PTT key
 
@@ -122,9 +124,27 @@ pip install -r requirements.txt
 
 #### 3. Install the OpenCode plugin
 
+`install.sh` auto-detects your OpenCode major version and installs the
+matching layout (`--v1` / `--v2` force one; without OpenCode on `PATH`
+it defaults to v2 with a warning).
+
+V2 (`~/.config/opencode/plugins/voice/`, plugin id `voice-kokoro`):
+
+```bash
+mkdir -p ~/.config/opencode/plugins/voice
+cp plugin/voice/index.ts plugin/voice/clean.ts plugin/voice/speak.ts \
+    ~/.config/opencode/plugins/voice/
+# Remove any legacy V1 install (V1 plugins do not run on OpenCode v2)
+rm -f ~/.config/opencode/plugins/voice.ts
+```
+
+V1 (`~/.config/opencode/plugins/voice.ts` + helper; note the installed
+helper must be the canonical `plugin/voice/clean.ts`, not the
+re-export shim in `plugin/kokoro/`):
+
 ```bash
 mkdir -p ~/.config/opencode/plugins/kokoro
-cp plugin/kokoro/clean.ts ~/.config/opencode/plugins/kokoro/clean.ts
+cp plugin/voice/clean.ts ~/.config/opencode/plugins/kokoro/clean.ts
 cp plugin/voice.ts ~/.config/opencode/plugins/voice.ts
 ```
 
@@ -233,9 +253,12 @@ speak.sh            Thin wrapper: sends stdin to tts_server.py via socat.
 clean_for_speech.py Markdown cleaner shared by the Grok Stop hook
                     (mirrors cleanForSpeech in plugin/kokoro/clean.ts).
 
-voice.ts            OpenCode plugin. Listens for assistant messages,
-                    cleans Markdown, sends text to speak.sh on
-                    session.idle. Toggle via /tmp/opencode-voice-enabled.
+voice/              OpenCode v2 plugin (id: voice-kokoro). Subscribes to
+                    session events, cleans Markdown, pipes text to
+                    speak.sh on session.idle. Toggle via
+                    /tmp/opencode-voice-enabled. Options (opencode.json
+                    `plugins` entry): tts, flag, maxChars.
+                    (plugin/voice.ts is the deprecated V1 version.)
 
 grok_stop_speak.py  Grok Build Stop hook. On end_turn, cleans
                     lastAssistantMessage and speaks via speak.sh
@@ -345,11 +368,12 @@ pip install -r requirements-dev.txt
 pytest tests/
 ```
 
-TypeScript tests:
+TypeScript tests + typecheck:
 
 ```bash
 npm install
 npm test
+npm run typecheck
 ```
 
 ## License

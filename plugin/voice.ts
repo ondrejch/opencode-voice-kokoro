@@ -1,3 +1,7 @@
+// DEPRECATED (OpenCode V1 only): kept for backwards compatibility.
+// The OpenCode v2 plugin lives in plugin/voice/index.ts
+// (id "voice-kokoro") — install.sh installs that layout.
+// V1 implementations do not run under OpenCode v2.
 import type { Plugin } from "@opencode-ai/plugin"
 import { existsSync } from "node:fs"
 import { cleanForSpeech } from "./kokoro/clean.ts"

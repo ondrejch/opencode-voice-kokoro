@@ -21,6 +21,7 @@ SKIP_VENV=0
 SKIP_PLUGIN=0
 SKIP_GROK_HOOK=0
 SKIP_SERVICES=0
+PLUGIN_VARIANT="auto"  # auto | v1 | v2
 
 for arg in "$@"; do
   case "$arg" in
@@ -29,6 +30,8 @@ for arg in "$@"; do
     --skip-plugin)    SKIP_PLUGIN=1 ;;
     --skip-grok-hook) SKIP_GROK_HOOK=1 ;;
     --skip-services)  SKIP_SERVICES=1 ;;
+    --v1)             PLUGIN_VARIANT="v1" ;;
+    --v2)             PLUGIN_VARIANT="v2" ;;
     --help|-h)
       echo "Usage: $0 [OPTIONS]"
       echo ""
@@ -38,12 +41,28 @@ for arg in "$@"; do
       echo "  --skip-plugin    Skip OpenCode plugin installation"
       echo "  --skip-grok-hook Skip Grok Build Stop-hook installation"
       echo "  --skip-services  Skip systemd service installation"
+      echo "  --v1             Install the OpenCode V1 plugin layout (voice.ts + kokoro/)"
+      echo "  --v2             Install the OpenCode V2 plugin layout (voice/ dir, id: voice-kokoro)"
+      echo "                   Default: auto-detect from 'opencode --version' (falls back to v2)"
       echo "  --help           Show this help"
       exit 0
       ;;
     *) err "Unknown option: $arg"; exit 1 ;;
   esac
 done
+
+# Detect the installed OpenCode major version ("1", "2", or empty).
+detect_opencode_major() {
+  local ver
+  if command -v opencode >/dev/null 2>&1; then
+    ver="$(opencode --version 2>/dev/null | head -n1)"
+    if [[ "$ver" =~ (^|[^0-9])([0-9]+)\. ]]; then
+      echo "${BASH_REMATCH[2]}"
+      return 0
+    fi
+  fi
+  echo ""
+}
 
 # ---------------------------------------------------------------
 # 1. System packages
@@ -103,14 +122,60 @@ fi
 # 3. OpenCode plugin
 # ---------------------------------------------------------------
 if [[ "$SKIP_PLUGIN" -eq 0 ]]; then
-  PLUGIN_DIR="$HOME/.config/opencode/plugins"
+  # Overridable for testing (e.g. PLUGIN_DIR=/tmp/p install.sh --v1 ...).
+  PLUGIN_DIR="${PLUGIN_DIR:-$HOME/.config/opencode/plugins}"
   mkdir -p "$PLUGIN_DIR"
-  # Helpers live in a subdirectory: OpenCode loads every *.ts/*.js file in the
-  # plugins directory as a plugin, so a top-level helper would be invoked too.
-  mkdir -p "$PLUGIN_DIR/kokoro"
-  cp "$REPO_DIR/plugin/kokoro/clean.ts" "$PLUGIN_DIR/kokoro/clean.ts"
-  cp "$REPO_DIR/plugin/voice.ts" "$PLUGIN_DIR/voice.ts"
-  info "OpenCode plugin installed to $PLUGIN_DIR/voice.ts"
+
+  VARIANT="$PLUGIN_VARIANT"
+  if [[ "$VARIANT" == "auto" ]]; then
+    MAJOR="$(detect_opencode_major)"
+    if [[ "$MAJOR" == "1" ]]; then
+      VARIANT="v1"
+    else
+      VARIANT="v2"
+      if [[ -z "$MAJOR" ]]; then
+        warn "Could not detect OpenCode version; defaulting to the v2 plugin layout (use --v1 to force v1)."
+      fi
+    fi
+  fi
+
+  if [[ "$VARIANT" == "v1" ]]; then
+    # V1 layout: single voice.ts + kokoro/clean.ts helper.
+    # NOTE: the repo copy of plugin/kokoro/clean.ts is a re-export shim,
+    # so install the canonical implementation (plugin/voice/clean.ts)
+    # under the V1 path instead.
+    mkdir -p "$PLUGIN_DIR/kokoro"
+    cp "$REPO_DIR/plugin/voice/clean.ts" "$PLUGIN_DIR/kokoro/clean.ts"
+    cp "$REPO_DIR/plugin/voice.ts" "$PLUGIN_DIR/voice.ts"
+    info "OpenCode V1 plugin installed to $PLUGIN_DIR/voice.ts"
+    # Remove any V2 install so the loaders don't see both layouts.
+    if [[ -d "$PLUGIN_DIR/voice" ]]; then
+      rm -rf "$PLUGIN_DIR/voice"
+      info "Removed V2 plugin dir $PLUGIN_DIR/voice"
+    fi
+  else
+    # V2 layout: voice/ is a plugin directory (server part: index.ts).
+    # Helpers are co-located inside it so the loader treats the
+    # directory as ONE plugin.
+    mkdir -p "$PLUGIN_DIR/voice"
+    for f in index.ts clean.ts speak.ts; do
+      cp "$REPO_DIR/plugin/voice/$f" "$PLUGIN_DIR/voice/$f"
+    done
+    info "OpenCode V2 plugin installed to $PLUGIN_DIR/voice/index.ts (id: voice-kokoro)"
+    # Remove the legacy V1 single-file install (V1 plugins do not run on v2
+    # and a stale voice.ts would shadow/confuse the loader).
+    if [[ -f "$PLUGIN_DIR/voice.ts" ]]; then
+      rm -f "$PLUGIN_DIR/voice.ts"
+      info "Removed legacy V1 plugin $PLUGIN_DIR/voice.ts"
+    fi
+    # Legacy helper dir from V1 installs is no longer needed by the V2
+    # plugin (helpers live in voice/). Remove only our own file.
+    if [[ -f "$PLUGIN_DIR/kokoro/clean.ts" ]]; then
+      rm -f "$PLUGIN_DIR/kokoro/clean.ts"
+      rmdir --ignore-fail-on-non-empty "$PLUGIN_DIR/kokoro" 2>/dev/null || true
+      info "Removed legacy V1 helper $PLUGIN_DIR/kokoro/clean.ts"
+    fi
+  fi
 else
   info "Skipping plugin (--skip-plugin)"
 fi
